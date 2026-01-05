@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jopper
+  namespace: default
+  labels:
+    app: jopper
+spec:
+  replicas: 1  # Only 1 replica to avoid concurrent syncs
+  selector:
+    matchLabels:
+      app: jopper
+  template:
+    metadata:
+      labels:
+        app: jopper
+    spec:
+      containers:
+      - name: jopper
+        image: quay.io/mangelajo/jopper:latest
+        imagePullPolicy: IfNotPresent
+        
+        # Environment variables from ConfigMap
+        envFrom:
+        - configMapRef:
+            name: jopper-config
+        
+        # Sensitive environment variables from Secret
+        env:
+        - name: JOPPER_JOPLIN_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: jopper-secrets
+              key: joplin-token
+        - name: JOPPER_OPENWEBUI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: jopper-secrets
+              key: openwebui-api-key
+        
+        # Mount volume for persistent state
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        
+        # Resource limits
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        
+        # Liveness probe (check if container is running)
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pgrep -f jopper
+          initialDelaySeconds: 30
+          periodSeconds: 60
+        
+        # Readiness probe (check if ready to serve)
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - test -f /data/state.db
+          initialDelaySeconds: 10
+          periodSeconds: 30
+      
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: jopper-data
+      
+      # Restart policy
+      restartPolicy: Always
+
+

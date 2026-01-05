@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: jopper-config
+  namespace: default
+data:
+  # Joplin configuration
+  JOPPER_JOPLIN_HOST: "joplin-service"  # Change to your Joplin service host
+  JOPPER_JOPLIN_PORT: "41184"
+  
+  # OpenWebUI configuration
+  JOPPER_OPENWEBUI_URL: "http://openwebui-service:3000"  # Change to your OpenWebUI service URL
+  JOPPER_OPENWEBUI_KB_NAME: "Joplin Notes"
+  JOPPER_OPENWEBUI_COLLECTION_ID: ""  # Optional: Set your collection ID here
+  
+  # Sync configuration
+  JOPPER_SYNC_MODE: "all"  # "all" or "tagged"
+  JOPPER_SYNC_TAGS: ""  # Comma-separated tags (when mode is "tagged")
+  JOPPER_SYNC_INTERVAL: "60"  # Sync interval in minutes
+  
+  # State database path (mounted volume)
+  JOPPER_STATE_DB_PATH: "/data/state.db"
+
+
