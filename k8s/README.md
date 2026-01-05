@@ -59,30 +59,69 @@ image: your-registry/jopper:latest
 
 ## Configuration
 
-### 1. Update Secret
+### 1. Get Your Credentials
 
-Edit `secret.yaml` and add your actual credentials:
+#### Joplin API Token
+
+1. Open Joplin application
+2. Go to **Tools** > **Options** (or **Preferences** on macOS)
+3. Select **Web Clipper** tab
+4. Ensure **Enable Web Clipper Service** is checked
+5. Under **Advanced Options**, copy the **Authorization token**
+
+#### OpenWebUI API Key
+
+1. Log into OpenWebUI
+2. Go to **Settings** > **Account**
+3. Find **API Keys** section
+4. Click **Generate API Key** or **Create new secret key**
+5. Copy the generated key (shown only once!)
+
+#### OpenWebUI Collection ID (Recommended)
+
+1. In OpenWebUI, go to **Workspace** > **Knowledge**
+2. Create a collection named "Joplin Notes" (or your preferred name)
+3. Click on the collection to view it
+4. Copy the **Collection ID** from the URL:
+   ```
+   https://your-openwebui.com/workspace/knowledge/ab3e1c1f-3ef7-4ad2-9c5d-144538056ddb
+                                                    ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                                                    This is your Collection ID
+   ```
+
+### 2. Create Secret
+
+**Option A: Using kubectl (Recommended)**
 
 ```bash
-# Get your Joplin token from: Tools > Options > Web Clipper > Advanced Options
-# Get your OpenWebUI API key from: Settings > Account > Generate API Key
-
 kubectl create secret generic jopper-secrets \
-  --from-literal=joplin-token='YOUR_JOPLIN_TOKEN' \
-  --from-literal=openwebui-api-key='YOUR_OPENWEBUI_API_KEY' \
-  --dry-run=client -o yaml > secret.yaml
+  --from-literal=joplin-token='YOUR_JOPLIN_TOKEN_HERE' \
+  --from-literal=openwebui-api-key='YOUR_OPENWEBUI_API_KEY_HERE' \
+  --namespace=default
 ```
 
-### 2. Update ConfigMap
+**Option B: Edit secret.yaml**
 
-Edit `configmap.yaml` and update the following:
+Edit `secret.yaml` and replace the placeholder values, then apply:
 
-- `JOPPER_JOPLIN_HOST` - Your Joplin service host/IP
-- `JOPPER_JOPLIN_PORT` - Joplin API port (default: 41184)
-- `JOPPER_OPENWEBUI_URL` - Your OpenWebUI service URL
-- `JOPPER_SYNC_MODE` - "all" or "tagged"
-- `JOPPER_SYNC_TAGS` - Comma-separated tags (if mode is "tagged")
-- `JOPPER_SYNC_INTERVAL` - Sync interval in minutes
+```bash
+kubectl apply -f secret.yaml
+```
+
+### 3. Update ConfigMap
+
+Edit `configmap.yaml` or use `configmap.example.yaml` as a template. Key settings:
+
+| Setting | Description | Example |
+|---------|-------------|---------|
+| `JOPPER_JOPLIN_HOST` | Joplin server hostname/IP | `192.168.1.100` or `joplin-service` |
+| `JOPPER_JOPLIN_PORT` | Joplin API port | `41184` (default) |
+| `JOPPER_OPENWEBUI_URL` | OpenWebUI base URL | `https://ai.example.com` |
+| `JOPPER_OPENWEBUI_KB_NAME` | Collection display name | `Joplin Notes` |
+| `JOPPER_OPENWEBUI_COLLECTION_ID` | Collection UUID | `ab3e1c1f-3ef7-4ad2-9c5d-144538056ddb` |
+| `JOPPER_SYNC_MODE` | Sync mode | `all` or `tagged` |
+| `JOPPER_SYNC_TAGS` | Tags to sync (if mode=tagged) | `work,docs` |
+| `JOPPER_SYNC_INTERVAL` | Minutes between syncs | `60` (default) |
 
 ## Deployment
 
@@ -129,18 +168,124 @@ kubectl rollout restart deployment/jopper
 
 ## Troubleshooting
 
+### Common Issues
+
+#### 1. Pod Not Starting
+
+```bash
+# Check pod status
+kubectl get pods -l app=jopper
+
+# Get detailed information
+kubectl describe pod -l app=jopper
+
+# Common causes:
+# - Secret not created or incorrect name
+# - ConfigMap not created or incorrect name
+# - PVC not bound
+```
+
+#### 2. Configuration Errors
+
+```bash
+# View current configuration
+kubectl exec deployment/jopper -- jopper config
+
+# Check environment variables
+kubectl exec deployment/jopper -- env | grep JOPPER
+
+# Common causes:
+# - Missing JOPPER_JOPLIN_TOKEN or JOPPER_OPENWEBUI_API_KEY
+# - Invalid URLs or hostnames
+# - Incorrect collection ID format
+```
+
+#### 3. Sync Failures
+
+```bash
+# View logs
+kubectl logs -f deployment/jopper --tail=100
+
+# Check sync status
+kubectl exec deployment/jopper -- jopper status
+
+# Run manual sync to test
+kubectl exec deployment/jopper -- jopper sync
+
+# Common causes:
+# - Joplin server not reachable (check JOPPER_JOPLIN_HOST)
+# - OpenWebUI server not reachable (check JOPPER_OPENWEBUI_URL)
+# - Invalid API credentials
+# - Collection ID doesn't exist
+```
+
+#### 4. Liveness/Readiness Probe Failures
+
+```bash
+# Check probe status
+kubectl describe pod -l app=jopper | grep -A 10 "Liveness\|Readiness"
+
+# Test probes manually
+kubectl exec deployment/jopper -- pgrep -f jopper
+kubectl exec deployment/jopper -- test -f /data/state.db && echo "OK"
+
+# Common causes:
+# - Initial sync taking longer than initialDelaySeconds
+# - Process crashed (check logs)
+# - PVC not mounted correctly
+```
+
+### Useful Commands
+
 ```bash
 # Get detailed pod information
 kubectl describe pod -l app=jopper
 
-# Get logs with more context
-kubectl logs -f deployment/jopper --tail=100
+# View logs (live tail)
+kubectl logs -f deployment/jopper
+
+# View logs (last 100 lines)
+kubectl logs deployment/jopper --tail=100
+
+# View logs from previous pod (if crashed)
+kubectl logs deployment/jopper --previous
 
 # Execute command in pod
 kubectl exec -it deployment/jopper -- jopper status
+kubectl exec -it deployment/jopper -- jopper config
+kubectl exec -it deployment/jopper -- jopper sync
 
 # Check events
-kubectl get events --sort-by='.lastTimestamp'
+kubectl get events --sort-by='.lastTimestamp' | grep jopper
+
+# View ConfigMap
+kubectl get configmap jopper-config -o yaml
+
+# View Secret (base64 encoded)
+kubectl get secret jopper-secrets -o yaml
+
+# Open a shell in the pod
+kubectl exec -it deployment/jopper -- /bin/sh
+
+# Check PVC status
+kubectl get pvc jopper-data
+kubectl describe pvc jopper-data
+```
+
+### Debug Mode
+
+To run with verbose logging, edit the deployment and add:
+
+```yaml
+containers:
+- name: jopper
+  command: ["jopper", "--verbose", "daemon"]
+```
+
+Then restart:
+
+```bash
+kubectl rollout restart deployment/jopper
 ```
 
 ## Cleanup

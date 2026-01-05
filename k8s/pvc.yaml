@@ -3,13 +3,20 @@ kind: PersistentVolumeClaim
 metadata:
   name: jopper-data
   namespace: default
+  labels:
+    app: jopper
+    app.kubernetes.io/name: jopper
+    app.kubernetes.io/component: storage
 spec:
   accessModes:
-    - ReadWriteOnce
+    - ReadWriteOnce  # Single node access (required for SQLite)
   resources:
     requests:
-      storage: 1Gi
+      storage: 1Gi  # Adjust based on number of notes (1Gi is usually more than enough)
   # Uncomment and specify storageClassName if needed
   # storageClassName: standard
+  # storageClassName: gp3  # For AWS EBS
+  # storageClassName: managed-premium  # For Azure
+  # storageClassName: pd-ssd  # For GCP
 
 

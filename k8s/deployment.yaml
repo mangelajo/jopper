@@ -5,8 +5,15 @@ metadata:
   namespace: default
   labels:
     app: jopper
+    app.kubernetes.io/name: jopper
+    app.kubernetes.io/component: sync
+    app.kubernetes.io/version: "0.1.0"
+  annotations:
+    description: "Synchronizes Joplin notes to OpenWebUI knowledge base"
 spec:
   replicas: 1  # Only 1 replica to avoid concurrent syncs
+  strategy:
+    type: Recreate  # Ensure only one instance runs at a time
   selector:
     matchLabels:
       app: jopper
@@ -14,13 +21,21 @@ spec:
     metadata:
       labels:
         app: jopper
+        app.kubernetes.io/name: jopper
+        app.kubernetes.io/component: sync
+      annotations:
+        prometheus.io/scrape: "false"  # No metrics endpoint (yet)
     spec:
       containers:
       - name: jopper
         image: quay.io/mangelajo/jopper:latest
         imagePullPolicy: IfNotPresent
         
-        # Environment variables from ConfigMap
+        # Command override (optional) - defaults to daemon mode
+        # command: ["jopper", "sync"]  # For one-time sync
+        # command: ["jopper", "daemon"]  # For continuous sync (default)
+        
+        # Environment variables from ConfigMap (non-sensitive config)
         envFrom:
         - configMapRef:
             name: jopper-config
@@ -43,26 +58,28 @@ spec:
         - name: data
           mountPath: /data
         
-        # Resource limits
+        # Resource limits (adjust based on note count and sync frequency)
         resources:
           requests:
-            memory: "128Mi"
-            cpu: "100m"
+            memory: "128Mi"  # Minimum memory
+            cpu: "100m"      # 0.1 CPU core minimum
           limits:
-            memory: "512Mi"
-            cpu: "500m"
+            memory: "512Mi"  # Maximum memory (increase if syncing large notes)
+            cpu: "500m"      # 0.5 CPU core maximum
         
-        # Liveness probe (check if container is running)
+        # Liveness probe (restart if process dies)
         livenessProbe:
           exec:
             command:
             - /bin/sh
             - -c
-            - pgrep -f jopper
+            - pgrep -f jopper || pgrep -f python
           initialDelaySeconds: 30
           periodSeconds: 60
+          timeoutSeconds: 5
+          failureThreshold: 3
         
-        # Readiness probe (check if ready to serve)
+        # Readiness probe (check if state DB exists)
         readinessProbe:
           exec:
             command:
@@ -71,6 +88,17 @@ spec:
             - test -f /data/state.db
           initialDelaySeconds: 10
           periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Security context (run as non-root if possible)
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  # uv needs write access
+          runAsNonRoot: false  # Python image runs as root by default
+          capabilities:
+            drop:
+            - ALL
       
       volumes:
       - name: data
