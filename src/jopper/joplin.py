@@ -20,7 +20,7 @@ class JoplinClient:
             config: Joplin configuration.
         """
         self.config = config
-        self.api = ClientApi(token=config.token)
+        self.api = ClientApi(token=config.token, url=config.url)
 
     def get_all_notes(self) -> list[dict]:
         """Get all notes from Joplin.
