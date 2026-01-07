@@ -34,18 +34,33 @@ class JoplinServerManager:
         self._setup_profile_dir()
 
     def _setup_profile_dir(self):
-        """Ensure profile directory exists and write initial settings."""
+        """Ensure profile directory exists and ensure settings are correct."""
         profile_path = Path(self.profile_dir)
         profile_path.mkdir(parents=True, exist_ok=True)
         logger.info(f"Using Joplin profile directory: {self.profile_dir}")
         
-        # Write settings.json if it doesn't exist to ensure token is set
+        # Always write/update settings.json to ensure token is correct
         settings_file = profile_path / "settings.json"
-        if not settings_file.exists():
-            logger.info("Creating initial Joplin settings file with configured token")
+        
+        # Check if settings need to be updated
+        needs_update = True
+        if settings_file.exists():
+            try:
+                existing_settings = json.loads(settings_file.read_text())
+                existing_token = existing_settings.get("api.token")
+                configured_token = self.config_dict.get("api.token")
+                
+                if existing_token == configured_token:
+                    logger.debug("Joplin settings file exists with correct token")
+                    needs_update = False
+                else:
+                    logger.info(f"Joplin token mismatch - updating settings file")
+            except (json.JSONDecodeError, IOError) as e:
+                logger.warning(f"Could not read existing settings: {e}, will recreate")
+        
+        if needs_update:
+            logger.info("Writing Joplin settings file with configured token")
             settings_file.write_text(json.dumps(self.config_dict, indent=2))
-        else:
-            logger.debug("Joplin settings file already exists")
 
     def _is_port_listening(self) -> bool:
         """Check if the configured port is already listening.
