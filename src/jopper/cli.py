@@ -130,8 +130,8 @@ def sync(ctx):
         config_file = ctx.obj.get("config_file")
         config = load_config(config_file)
 
-        # Create sync engine and run sync
-        engine = SyncEngine(config)
+        # Create sync engine and run sync (pass joplin server manager)
+        engine = SyncEngine(config, joplin_server_manager=_joplin_server)
         result = engine.sync()
 
         # Display results
@@ -169,8 +169,8 @@ def daemon(ctx):
         config_file = ctx.obj.get("config_file")
         config = load_config(config_file)
 
-        # Create sync engine
-        engine = SyncEngine(config)
+        # Create sync engine (pass joplin server manager)
+        engine = SyncEngine(config, joplin_server_manager=_joplin_server)
 
         interval = config.sync.interval_minutes
         click.echo(

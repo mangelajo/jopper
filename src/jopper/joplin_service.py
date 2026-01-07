@@ -192,6 +192,48 @@ class JoplinServerManager:
             return False
         return self.process.poll() is None
 
+    def trigger_sync(self) -> bool:
+        """Trigger a Joplin sync to fetch latest notes from server.
+
+        Returns:
+            True if sync succeeded, False otherwise.
+        """
+        logger.info("Triggering Joplin sync to fetch latest notes...")
+
+        # Set up environment with Joplin configuration
+        env = os.environ.copy()
+        env["JOPLIN_CONFIG_JSON"] = json.dumps(self.config_dict)
+        env["JOPLIN_PROFILE_DIR"] = self.profile_dir
+
+        try:
+            # Run joplin sync command
+            result = subprocess.run(
+                ["joplin", "sync"],
+                env=env,
+                capture_output=True,
+                text=True,
+                timeout=300,  # 5 minute timeout for sync
+            )
+
+            if result.returncode == 0:
+                logger.info("Joplin sync completed successfully")
+                return True
+            else:
+                logger.error(f"Joplin sync failed with code {result.returncode}")
+                if result.stderr:
+                    logger.error(f"Joplin sync error: {result.stderr}")
+                return False
+
+        except subprocess.TimeoutExpired:
+            logger.error("Joplin sync timed out after 5 minutes")
+            return False
+        except FileNotFoundError:
+            logger.error("Joplin CLI not found. Cannot trigger sync.")
+            return False
+        except Exception as e:
+            logger.error(f"Failed to trigger Joplin sync: {e}")
+            return False
+
     def __enter__(self):
         """Context manager entry."""
         self.start()
