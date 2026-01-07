@@ -29,6 +29,17 @@ RUN uv venv /app/.venv && \
 # Final stage
 FROM python:3.12-slim
 
+# Install Node.js and npm for Joplin CLI
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    nodejs \
+    npm \
+    ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Joplin CLI globally
+RUN npm install -g joplin
+
 # Set working directory
 WORKDIR /app
 
@@ -38,13 +49,15 @@ COPY --from=builder /app/src /app/src
 COPY --from=builder /app/pyproject.toml /app/pyproject.toml
 COPY --from=builder /app/README.md /app/README.md
 
-# Create directory for state database
-RUN mkdir -p /data
+# Create directories for state database and Joplin data
+RUN mkdir -p /data /home/node/.config/joplin && \
+    chmod -R 777 /home/node/.config/joplin
 
 # Set environment variables
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
-    JOPPER_STATE_DB_PATH=/data/state.db
+    JOPPER_STATE_DB_PATH=/data/state.db \
+    NODE_PATH=/usr/local/lib/node_modules
 
 # Run daemon mode by default
 CMD ["jopper", "daemon"]

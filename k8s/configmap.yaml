@@ -11,10 +11,9 @@ data:
   # ============================================================================
   # Joplin Configuration
   # ============================================================================
-  # Joplin server hostname or IP address
-  # For Joplin running in the same cluster, use the service name
-  # For external Joplin, use the full hostname or IP
-  JOPPER_JOPLIN_HOST: "joplin-service"
+  # Joplin CLI running in same container (localhost)
+  # The Joplin CLI exposes the Data API on port 41184
+  JOPPER_JOPLIN_HOST: "localhost"
   
   # Joplin Web Clipper API port (default: 41184)
   JOPPER_JOPLIN_PORT: "41184"

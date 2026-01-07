@@ -19,4 +19,27 @@ spec:
   # storageClassName: managed-premium  # For Azure
   # storageClassName: pd-ssd  # For GCP
 
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: joplin-data
+  namespace: default
+  labels:
+    app: jopper
+    app.kubernetes.io/name: jopper
+    app.kubernetes.io/component: joplin-storage
+spec:
+  accessModes:
+    - ReadWriteOnce  # Single node access (Joplin CLI needs exclusive access)
+  resources:
+    requests:
+      storage: 5Gi  # Adjust based on your notes volume (includes sync cache)
+  # Uncomment and specify storageClassName if needed
+  # storageClassName: standard
+  # storageClassName: gp3  # For AWS EBS
+  # storageClassName: managed-premium  # For Azure
+  # storageClassName: pd-ssd  # For GCP
+
 

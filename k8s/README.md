@@ -1,13 +1,22 @@
 # Kubernetes Deployment for Jopper
 
-This directory contains Kubernetes manifests for deploying Jopper in a Kubernetes cluster.
+> 📖 **Complete Deployment Guide:** [`../KUBERNETES_GUIDE.md`](../KUBERNETES_GUIDE.md)
+>
+> All documentation has been unified into a single comprehensive guide. See the link above for:
+> - Architecture overview
+> - Step-by-step deployment
+> - Configuration reference  
+> - Troubleshooting
+> - Migration guides
+
+This directory contains Kubernetes manifests for deploying Jopper.
 
 ## Files
 
-- `secret.yaml` - Stores sensitive credentials (Joplin token, OpenWebUI API key)
+- `secret.yaml` - Stores sensitive credentials (Joplin token, OpenWebUI API key, Joplin config)
 - `configmap.yaml` - Configuration settings as environment variables
-- `pvc.yaml` - PersistentVolumeClaim for storing sync state
-- `deployment.yaml` - Main deployment configuration
+- `pvc.yaml` - PersistentVolumeClaims for storing sync state and Joplin data
+- `deployment.yaml` - Main deployment configuration (single container with integrated Joplin)
 
 ## Prerequisites
 

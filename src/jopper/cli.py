@@ -3,8 +3,10 @@
 Provides CLI commands for syncing Joplin notes to OpenWebUI.
 """
 
+import atexit
 import json
 import logging
+import os
 import sys
 import time
 from pathlib import Path
@@ -13,6 +15,7 @@ import click
 import schedule
 
 from jopper.config import load_config
+from jopper.joplin_service import JoplinServerManager
 from jopper.sync import SyncEngine
 
 # Configure logging
@@ -23,6 +26,75 @@ logging.basicConfig(
 )
 
 logger = logging.getLogger(__name__)
+
+# Global Joplin server manager instance
+_joplin_server = None
+
+
+def _get_joplin_config_dict() -> dict:
+    """Get Joplin configuration from environment variable.
+
+    Returns:
+        Dictionary with Joplin configuration.
+    """
+    # Check if JOPLIN_CONFIG_JSON is set (Kubernetes deployment)
+    config_json = os.environ.get("JOPLIN_CONFIG_JSON")
+    if config_json:
+        try:
+            return json.loads(config_json)
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to parse JOPLIN_CONFIG_JSON: {e}")
+            return {}
+
+    # Fallback to individual environment variables
+    return {
+        "api.port": int(os.environ.get("JOPLIN_API_PORT", "41184")),
+        "sync.target": int(os.environ.get("JOPLIN_SYNC_TARGET", "0")),
+        "sync.9.path": os.environ.get("JOPLIN_SYNC_PATH", ""),
+        "sync.9.username": os.environ.get("JOPLIN_SYNC_USERNAME", ""),
+        "sync.9.password": os.environ.get("JOPLIN_SYNC_PASSWORD", ""),
+        "sync.interval": int(os.environ.get("JOPLIN_SYNC_INTERVAL", "300")),
+        "clipperServer.autoStart": True,
+    }
+
+
+def _start_joplin_server() -> bool:
+    """Start the Joplin server if not already running.
+
+    Returns:
+        True if server is ready, False otherwise.
+    """
+    global _joplin_server
+
+    if _joplin_server and _joplin_server.is_running():
+        return True
+
+    joplin_config = _get_joplin_config_dict()
+    port = joplin_config.get("api.port", 41184)
+    
+    # Use JOPLIN_PROFILE_DIR if set, otherwise use platform-appropriate default
+    profile_dir = os.environ.get("JOPLIN_PROFILE_DIR")
+    if not profile_dir:
+        # Default to user's home directory on local machine
+        # In containers, this will be set via environment variable
+        profile_dir = os.path.expanduser("~/.config/joplin")
+
+    _joplin_server = JoplinServerManager(
+        config_dict=joplin_config, port=port, profile_dir=profile_dir
+    )
+
+    # Register cleanup on exit
+    atexit.register(_stop_joplin_server)
+
+    return _joplin_server.start()
+
+
+def _stop_joplin_server():
+    """Stop the Joplin server."""
+    global _joplin_server
+    if _joplin_server:
+        _joplin_server.stop()
+        _joplin_server = None
 
 
 @click.group()
@@ -49,6 +121,11 @@ def main(ctx, config, verbose):
 def sync(ctx):
     """Run a one-time sync operation."""
     try:
+        # Start Joplin server
+        if not _start_joplin_server():
+            click.echo(click.style("✗ Failed to start Joplin server", fg="red"))
+            sys.exit(1)
+
         # Load configuration
         config_file = ctx.obj.get("config_file")
         config = load_config(config_file)
@@ -83,6 +160,11 @@ def sync(ctx):
 def daemon(ctx):
     """Run continuous sync at configured intervals."""
     try:
+        # Start Joplin server
+        if not _start_joplin_server():
+            click.echo(click.style("✗ Failed to start Joplin server", fg="red"))
+            sys.exit(1)
+
         # Load configuration
         config_file = ctx.obj.get("config_file")
         config = load_config(config_file)
@@ -150,6 +232,11 @@ def _display_sync_result(result: dict):
 def status(ctx):
     """Show sync status and statistics."""
     try:
+        # Start Joplin server
+        if not _start_joplin_server():
+            click.echo(click.style("✗ Failed to start Joplin server", fg="red"))
+            sys.exit(1)
+
         # Load configuration
         config_file = ctx.obj.get("config_file")
         config = load_config(config_file)
