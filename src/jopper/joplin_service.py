@@ -34,9 +34,18 @@ class JoplinServerManager:
         self._setup_profile_dir()
 
     def _setup_profile_dir(self):
-        """Ensure profile directory exists."""
-        Path(self.profile_dir).mkdir(parents=True, exist_ok=True)
+        """Ensure profile directory exists and write initial settings."""
+        profile_path = Path(self.profile_dir)
+        profile_path.mkdir(parents=True, exist_ok=True)
         logger.info(f"Using Joplin profile directory: {self.profile_dir}")
+        
+        # Write settings.json if it doesn't exist to ensure token is set
+        settings_file = profile_path / "settings.json"
+        if not settings_file.exists():
+            logger.info("Creating initial Joplin settings file with configured token")
+            settings_file.write_text(json.dumps(self.config_dict, indent=2))
+        else:
+            logger.debug("Joplin settings file already exists")
 
     def _is_port_listening(self) -> bool:
         """Check if the configured port is already listening.
