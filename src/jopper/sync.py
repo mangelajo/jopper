@@ -16,18 +16,16 @@ logger = logging.getLogger(__name__)
 class SyncEngine:
     """Manages synchronization between Joplin and OpenWebUI."""
 
-    def __init__(self, config: Config, joplin_server_manager=None):
+    def __init__(self, config: Config):
         """Initialize sync engine.
 
         Args:
             config: Application configuration.
-            joplin_server_manager: Optional JoplinServerManager instance for triggering syncs.
         """
         self.config = config
         self.joplin = JoplinClient(config.joplin)
         self.openwebui = OpenWebUIClient(config.openwebui)
         self.state = StateManager(config.state_db_path)
-        self.joplin_server_manager = joplin_server_manager
 
     def sync(self) -> dict:
         """Perform a sync operation.
@@ -36,16 +34,6 @@ class SyncEngine:
             Dictionary with sync statistics.
         """
         logger.info("Starting sync operation...")
-
-        # Trigger Joplin sync first to get latest notes from server
-        if self.joplin_server_manager:
-            logger.info("Syncing Joplin with server to fetch latest notes...")
-            if not self.joplin_server_manager.trigger_sync():
-                logger.warning(
-                    "Joplin sync failed, continuing with locally cached notes"
-                )
-        else:
-            logger.debug("No Joplin server manager available, skipping Joplin sync")
 
         # Check for available collections (optional - files can be uploaded without them)
         collection_id = self.openwebui.get_or_prompt_collection()

@@ -65,11 +65,12 @@ class JoplinServerManager:
             return False
         return False
 
-    def start(self, timeout: int = 60) -> bool:
+    def start(self, timeout: int = 60, sync_first: bool = True) -> bool:
         """Start the Joplin server.
 
         Args:
             timeout: Maximum time to wait for server to be ready (seconds).
+            sync_first: Whether to sync with Joplin Server before starting (default: True).
 
         Returns:
             True if server started successfully, False otherwise.
@@ -85,6 +86,12 @@ class JoplinServerManager:
                 f"Joplin server already available on port {self.port}, skipping start"
             )
             return True
+
+        # Sync with Joplin Server first to get latest notes
+        if sync_first:
+            logger.info("Syncing with Joplin Server to fetch latest notes...")
+            if not self.trigger_sync():
+                logger.warning("Joplin sync failed, continuing with cached notes")
 
         logger.info(f"Starting Joplin server on port {self.port}...")
 

@@ -130,8 +130,8 @@ def sync(ctx):
         config_file = ctx.obj.get("config_file")
         config = load_config(config_file)
 
-        # Create sync engine and run sync (pass joplin server manager)
-        engine = SyncEngine(config, joplin_server_manager=_joplin_server)
+        # Create sync engine and run sync
+        engine = SyncEngine(config)
         result = engine.sync()
 
         # Display results
@@ -160,31 +160,23 @@ def sync(ctx):
 def daemon(ctx):
     """Run continuous sync at configured intervals."""
     try:
-        # Start Joplin server
-        if not _start_joplin_server():
-            click.echo(click.style("✗ Failed to start Joplin server", fg="red"))
-            sys.exit(1)
-
         # Load configuration
         config_file = ctx.obj.get("config_file")
         config = load_config(config_file)
-
-        # Create sync engine (pass joplin server manager)
-        engine = SyncEngine(config, joplin_server_manager=_joplin_server)
 
         interval = config.sync.interval_minutes
         click.echo(
             click.style(f"Starting daemon mode (sync every {interval} minutes)...", fg="blue")
         )
+        click.echo(click.style("Each cycle: Joplin sync → Start server → Sync to OpenWebUI → Stop server", fg="blue"))
         click.echo("Press Ctrl+C to stop")
 
-        # Run initial sync
+        # Run initial sync with full lifecycle
         click.echo("\nRunning initial sync...")
-        result = engine.sync()
-        _display_sync_result(result)
+        _scheduled_sync(config)
 
         # Schedule periodic syncs
-        schedule.every(interval).minutes.do(lambda: _scheduled_sync(engine))
+        schedule.every(interval).minutes.do(lambda: _scheduled_sync(config))
 
         # Run scheduler loop
         while True:
@@ -203,11 +195,49 @@ def daemon(ctx):
         sys.exit(1)
 
 
-def _scheduled_sync(engine: SyncEngine):
-    """Run a scheduled sync and display results."""
+def _scheduled_sync(config):
+    """Run a scheduled sync with full lifecycle (sync -> start -> sync -> stop).
+    
+    Args:
+        config: Application configuration.
+    """
     click.echo(f"\n[{time.strftime('%Y-%m-%d %H:%M:%S')}] Running scheduled sync...")
-    result = engine.sync()
-    _display_sync_result(result)
+    
+    server = None
+    try:
+        # Get Joplin configuration
+        joplin_config = _get_joplin_config_dict()
+        port = joplin_config.get("api.port", 41184)
+        
+        # Use JOPLIN_PROFILE_DIR if set, otherwise use platform-appropriate default
+        profile_dir = os.environ.get("JOPLIN_PROFILE_DIR")
+        if not profile_dir:
+            profile_dir = os.path.expanduser("~/.config/joplin")
+        
+        # Create a fresh server manager for this sync cycle
+        from jopper.joplin_service import JoplinServerManager
+        server = JoplinServerManager(
+            config_dict=joplin_config, port=port, profile_dir=profile_dir
+        )
+        
+        # Start server (includes joplin sync before starting)
+        if not server.start(sync_first=True):
+            click.echo(click.style("✗ Failed to start Joplin server", fg="red"))
+            return
+        
+        # Run sync to OpenWebUI
+        engine = SyncEngine(config)
+        result = engine.sync()
+        _display_sync_result(result)
+        
+    except Exception as e:
+        logger.exception("Error during scheduled sync")
+        click.echo(click.style(f"✗ Sync failed: {e}", fg="red"))
+    finally:
+        # Always stop the server after sync to ensure clean state
+        if server:
+            server.stop()
+            logger.info("Joplin server stopped after sync cycle")
 
 
 def _display_sync_result(result: dict):
