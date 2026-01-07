@@ -98,12 +98,18 @@ class JoplinServerManager:
         # Set up environment with Joplin configuration
         env = os.environ.copy()
         env["JOPLIN_CONFIG_JSON"] = json.dumps(self.config_dict)
-        env["JOPLIN_PROFILE_DIR"] = self.profile_dir
+        
+        # Set HOME if not set (required for Joplin to find config directory)
+        if "HOME" not in env or not env["HOME"]:
+            # Infer HOME from profile_dir (e.g., /home/node/.config/joplin -> /home/node)
+            home_dir = str(Path(self.profile_dir).parent.parent)
+            env["HOME"] = home_dir
+            logger.info(f"Setting HOME={home_dir} for Joplin process")
 
         try:
-            # Start Joplin server as a subprocess
+            # Start Joplin server as a subprocess with --profile flag
             self.process = subprocess.Popen(
-                ["joplin", "server", "start"],
+                ["joplin", "server", "start", "--profile", self.profile_dir],
                 env=env,
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
@@ -210,12 +216,18 @@ class JoplinServerManager:
         # Set up environment with Joplin configuration
         env = os.environ.copy()
         env["JOPLIN_CONFIG_JSON"] = json.dumps(self.config_dict)
-        env["JOPLIN_PROFILE_DIR"] = self.profile_dir
+        
+        # Set HOME if not set (required for Joplin to find config directory)
+        if "HOME" not in env or not env["HOME"]:
+            # Infer HOME from profile_dir (e.g., /home/node/.config/joplin -> /home/node)
+            home_dir = str(Path(self.profile_dir).parent.parent)
+            env["HOME"] = home_dir
+            logger.debug(f"Setting HOME={home_dir} for Joplin sync")
 
         try:
-            # Run joplin sync command
+            # Run joplin sync command with --profile flag
             result = subprocess.run(
-                ["joplin", "sync"],
+                ["joplin", "sync", "--profile", self.profile_dir],
                 env=env,
                 capture_output=True,
                 text=True,

@@ -57,7 +57,8 @@ RUN mkdir -p /data /home/node/.config/joplin && \
 ENV PATH="/app/.venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \
     JOPPER_STATE_DB_PATH=/data/state.db \
-    NODE_PATH=/usr/local/lib/node_modules
+    NODE_PATH=/usr/local/lib/node_modules \
+    HOME=/root
 
 # Run daemon mode by default
 CMD ["jopper", "daemon"]
