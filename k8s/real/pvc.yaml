@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: jopper-data
+  namespace: ollama
+  labels:
+    app: jopper
+    app.kubernetes.io/name: jopper
+    app.kubernetes.io/component: storage
+spec:
+  accessModes:
+    - ReadWriteOnce  # Single node access (required for SQLite)
+  resources:
+    requests:
+      storage: 1Gi  # Adjust based on number of notes (1Gi is usually more than enough)
+  # Uncomment and specify storageClassName if needed
+  # storageClassName: standard
+  # storageClassName: gp3  # For AWS EBS
+  # storageClassName: managed-premium  # For Azure
+  # storageClassName: pd-ssd  # For GCP
+
+---
+
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: joplin-data
+  namespace: ollama
+  labels:
+    app: jopper
+    app.kubernetes.io/name: jopper
+    app.kubernetes.io/component: joplin-storage
+spec:
+  accessModes:
+    - ReadWriteOnce  # Single node access (Joplin CLI needs exclusive access)
+  resources:
+    requests:
+      storage: 5Gi  # Adjust based on your notes volume (includes sync cache)
+  # Uncomment and specify storageClassName if needed
+  # storageClassName: standard
+  # storageClassName: gp3  # For AWS EBS
+  # storageClassName: managed-premium  # For Azure
+  # storageClassName: pd-ssd  # For GCP
+
+

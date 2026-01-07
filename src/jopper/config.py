@@ -82,9 +82,14 @@ def load_config(config_file: Optional[str] = None) -> Config:
     # Load from YAML file if it exists
     yaml_config = {}
     config_path = Path(config_file)
-    if config_path.exists():
-        with open(config_path) as f:
-            yaml_config = yaml.safe_load(f) or {}
+    try:
+        if config_path.exists():
+            with open(config_path) as f:
+                yaml_config = yaml.safe_load(f) or {}
+    except (PermissionError, OSError):
+        # If we can't access the config file (e.g., in containers),
+        # just use environment variables
+        pass
 
     # Helper to get config value with priority: env var > yaml > default
     def get_config(

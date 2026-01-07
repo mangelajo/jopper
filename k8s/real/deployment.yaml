@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: jopper
+  namespace: ollama
+  labels:
+    app: jopper
+    app.kubernetes.io/name: jopper
+    app.kubernetes.io/component: sync
+    app.kubernetes.io/version: "0.1.0"
+  annotations:
+    description: "Synchronizes Joplin notes to OpenWebUI knowledge base"
+spec:
+  replicas: 1  # Only 1 replica to avoid concurrent syncs
+  strategy:
+    type: Recreate  # Ensure only one instance runs at a time
+  selector:
+    matchLabels:
+      app: jopper
+  template:
+    metadata:
+      labels:
+        app: jopper
+        app.kubernetes.io/name: jopper
+        app.kubernetes.io/component: sync
+      annotations:
+        prometheus.io/scrape: "false"  # No metrics endpoint (yet)
+    spec:
+      containers:
+      # Main jopper container with integrated Joplin CLI
+      - name: jopper
+        image: quay.io/mangelajo/jopper:latest
+        imagePullPolicy: Always
+        
+        # Command override (optional) - defaults to daemon mode
+        # command: ["jopper", "sync"]  # For one-time sync
+        # command: ["jopper", "daemon"]  # For continuous sync (default)
+        
+        # Environment variables from ConfigMap (non-sensitive config)
+        envFrom:
+        - configMapRef:
+            name: jopper-config
+        
+        # Sensitive environment variables from Secret
+        env:
+        - name: JOPPER_JOPLIN_TOKEN
+          valueFrom:
+            secretKeyRef:
+              name: jopper-secrets
+              key: joplin-token
+        - name: JOPPER_OPENWEBUI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: jopper-secrets
+              key: openwebui-api-key
+        # Joplin CLI configuration via JSON
+        - name: JOPLIN_CONFIG_JSON
+          valueFrom:
+            secretKeyRef:
+              name: jopper-secrets
+              key: joplin-config-json
+        # Joplin profile directory
+        - name: JOPLIN_PROFILE_DIR
+          value: "/home/node/.config/joplin"
+        
+        # Mount volumes for persistent state and Joplin data
+        volumeMounts:
+        - name: data
+          mountPath: /data
+        - name: joplin-data
+          mountPath: /home/node/.config/joplin
+        
+        # Resource limits (increased for integrated Joplin CLI)
+        resources:
+          requests:
+            memory: "384Mi"  # Increased for Joplin + Python
+            cpu: "200m"      # 0.2 CPU core minimum
+          limits:
+            memory: "1Gi"    # Maximum memory for both services
+            cpu: "1000m"     # 1 CPU core maximum
+        
+        # Liveness probe (restart if process dies)
+        livenessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - pgrep -f jopper || pgrep -f python
+          initialDelaySeconds: 30
+          periodSeconds: 60
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Readiness probe (check if state DB exists)
+        readinessProbe:
+          exec:
+            command:
+            - /bin/sh
+            - -c
+            - test -f /data/state.db
+          initialDelaySeconds: 10
+          periodSeconds: 30
+          timeoutSeconds: 5
+          failureThreshold: 3
+        
+        # Security context (run as non-root if possible)
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: false  # uv needs write access
+          runAsNonRoot: false  # Python image runs as root by default
+          capabilities:
+            drop:
+            - ALL
+      
+      volumes:
+      # Volume for jopper state
+      - name: data
+        persistentVolumeClaim:
+          claimName: jopper-data
+      
+      # Volume for Joplin CLI data (notes, config, etc.)
+      - name: joplin-data
+        persistentVolumeClaim:
+          claimName: joplin-data
+      
+      # Restart policy
+      restartPolicy: Always
+
+
