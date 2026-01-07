@@ -122,7 +122,7 @@ All configuration can be set via environment variables (useful for containers):
 | `JOPPER_OPENWEBUI_COLLECTION_ID` | Knowledge collection ID | (empty) |
 | `JOPPER_SYNC_MODE` | Sync mode: `all` or `tagged` | `all` |
 | `JOPPER_SYNC_TAGS` | Comma-separated tags | (empty) |
-| `JOPPER_SYNC_INTERVAL` | Sync interval in minutes | `60` |
+| `JOPPER_SYNC_INTERVAL_MINUTES` | Sync interval in minutes | `60` |
 | `JOPPER_STATE_DB_PATH` | Path to SQLite state database | `~/.local/share/jopper/state.db` |
 | `JOPPER_CONFIG_FILE` | Path to YAML config file | `~/.config/jopper/config.yaml` |
 

@@ -160,7 +160,7 @@ def load_config(config_file: Optional[str] = None) -> Config:
         mode=get_config("JOPPER_SYNC_MODE", ["sync", "mode"], "all"),
         tags=sync_tags,
         interval_minutes=int(
-            get_config("JOPPER_SYNC_INTERVAL", ["sync", "interval_minutes"], "60")
+            get_config("JOPPER_SYNC_INTERVAL_MINUTES", ["sync", "interval_minutes"], "60")
         ),
     )
 

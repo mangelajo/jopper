@@ -48,7 +48,7 @@ data:
   
   # Sync interval in minutes for daemon mode
   # Default: 60 (sync every hour)
-  JOPPER_SYNC_INTERVAL: "60"
+  JOPPER_SYNC_INTERVAL_MINUTES: "60"
   
   # ============================================================================
   # Storage Configuration

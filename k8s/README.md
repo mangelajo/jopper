@@ -130,7 +130,7 @@ Edit `configmap.yaml` or use `configmap.example.yaml` as a template. Key setting
 | `JOPPER_OPENWEBUI_COLLECTION_ID` | Collection UUID | `ab3e1c1f-3ef7-4ad2-9c5d-144538056ddb` |
 | `JOPPER_SYNC_MODE` | Sync mode | `all` or `tagged` |
 | `JOPPER_SYNC_TAGS` | Tags to sync (if mode=tagged) | `work,docs` |
-| `JOPPER_SYNC_INTERVAL` | Minutes between syncs | `60` (default) |
+| `JOPPER_SYNC_INTERVAL_MINUTES` | Minutes between syncs | `60` (default) |
 
 ## Deployment
 
