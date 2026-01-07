@@ -99,12 +99,11 @@ class JoplinServerManager:
         env = os.environ.copy()
         env["JOPLIN_CONFIG_JSON"] = json.dumps(self.config_dict)
         
-        # Set HOME if not set (required for Joplin to find config directory)
-        if "HOME" not in env or not env["HOME"]:
-            # Infer HOME from profile_dir (e.g., /home/node/.config/joplin -> /home/node)
-            home_dir = str(Path(self.profile_dir).parent.parent)
-            env["HOME"] = home_dir
-            logger.info(f"Setting HOME={home_dir} for Joplin process")
+        # Always set HOME explicitly (required for Joplin to find config directory)
+        # Infer HOME from profile_dir (e.g., /home/node/.config/joplin -> /home/node)
+        home_dir = str(Path(self.profile_dir).parent.parent)
+        env["HOME"] = home_dir
+        logger.info(f"Setting HOME={home_dir} for Joplin process")
 
         try:
             # Start Joplin server as a subprocess with --profile flag
@@ -217,12 +216,11 @@ class JoplinServerManager:
         env = os.environ.copy()
         env["JOPLIN_CONFIG_JSON"] = json.dumps(self.config_dict)
         
-        # Set HOME if not set (required for Joplin to find config directory)
-        if "HOME" not in env or not env["HOME"]:
-            # Infer HOME from profile_dir (e.g., /home/node/.config/joplin -> /home/node)
-            home_dir = str(Path(self.profile_dir).parent.parent)
-            env["HOME"] = home_dir
-            logger.debug(f"Setting HOME={home_dir} for Joplin sync")
+        # Always set HOME explicitly (required for Joplin to find config directory)
+        # Infer HOME from profile_dir (e.g., /home/node/.config/joplin -> /home/node)
+        home_dir = str(Path(self.profile_dir).parent.parent)
+        env["HOME"] = home_dir
+        logger.debug(f"Setting HOME={home_dir} for Joplin sync")
 
         try:
             # Run joplin sync command with --profile flag
