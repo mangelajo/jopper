@@ -29,12 +29,13 @@ RUN uv venv /app/.venv && \
 # Final stage
 FROM python:3.12-slim
 
-# Install Node.js and npm for Joplin CLI
+# Install Node.js, npm for Joplin CLI, and procps for liveness probe
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
     nodejs \
     npm \
-    ca-certificates && \
+    ca-certificates \
+    procps && \
     rm -rf /var/lib/apt/lists/*
 
 # Install Joplin CLI globally
